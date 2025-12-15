@@ -66,7 +66,8 @@ def generate_lower_bound_binary_search(
     mid_assign = cppast.AssignOperator([mid_var], mid_calc, cppast.BinaryOperatorKind.Assign)
     
     # if (view[mid] < value)
-    view_access = cppast.CallExpr(view_expr, [mid_var])
+    view_ref = view_expr if isinstance(view_expr, cppast.DeclRefExpr) else cppast.DeclRefExpr("view")
+    view_access = cppast.ArraySubscriptExpr(view_ref, [mid_var])
     if_cond = cppast.BinaryOperator(view_access, value_expr, cppast.BinaryOperatorKind.LT)
     
     # left = mid + 1;
