@@ -363,6 +363,76 @@ class WorkunitVisitor(PyKokkosVisitor):
 
             return cppast.CallExpr(function, scan_args)
 
+        # Custom `upper_bound` implementation using binary search
+        if name == "upper_bound":
+            # Check if it's called via pk.upper_bound
+            is_pk_call = (
+                isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == self.pk_import
+            )
+
+            if not is_pk_call:
+                return super().visit_Call(node)
+
+            # Expected signature: pk.upper_bound(view, size, value)
+            if len(args) != 3:
+                self.error(
+                    node,
+                    "pk.upper_bound() takes 3 arguments: view, size, value",
+                )
+
+            view_expr = args[0]
+            size_expr = args[1]
+            value_expr = args[2]
+
+            # Generate binary search lambda inline
+            from pykokkos.interface.algorithms.upper_bound import generate_upper_bound_binary_search
+            
+            # Create lambda body with binary search
+            lambda_body = generate_upper_bound_binary_search(view_expr, size_expr, value_expr)
+            
+            # Create and invoke lambda
+            lambda_expr = cppast.LambdaExpr("[&]", [], lambda_body)
+            lambda_call = cppast.CallExpr(lambda_expr, [])
+
+            return lambda_call
+
+        # Custom `lower_bound` implementation using binary search
+        if name == "lower_bound":
+            # Check if it's called via pk.lower_bound
+            is_pk_call = (
+                isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == self.pk_import
+            )
+
+            if not is_pk_call:
+                return super().visit_Call(node)
+
+            # Expected signature: pk.lower_bound(view, size, value)
+            if len(args) != 3:
+                self.error(
+                    node,
+                    "pk.lower_bound() takes 3 arguments: view, size, value",
+                )
+
+            view_expr = args[0]
+            size_expr = args[1]
+            value_expr = args[2]
+
+            # Generate binary search lambda inline
+            from pykokkos.interface.algorithms.lower_bound import generate_lower_bound_binary_search
+            
+            # Create lambda body with binary search
+            lambda_body = generate_lower_bound_binary_search(view_expr, size_expr, value_expr)
+            
+            # Create and invoke lambda
+            lambda_expr = cppast.LambdaExpr("[&]", [], lambda_body)
+            lambda_call = cppast.CallExpr(lambda_expr, [])
+
+            return lambda_call
+
         return super().visit_Call(node)
 
     def is_nested_call(self, node: ast.FunctionDef) -> bool:
