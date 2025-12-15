@@ -54,7 +54,7 @@ class SymbolsPass:
         self.global_symbols.update(math_functions)
         self.global_symbols.update(allowed_types)
         self.global_symbols.update(view_dtypes)
-        self.global_symbols.update(["self", "range", "math", "List", "abs", "inclusive_scan", "upper_bound"])
+        self.global_symbols.update(["self", "range", "math", "List", "abs", "upper_bound", "lower_bound"])
         self.global_symbols.add(pk_import)
 
         self.global_symbols.update([field.declname for field in members.fields])

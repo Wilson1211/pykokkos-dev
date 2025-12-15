@@ -1,5 +1,5 @@
 from .accumulator import Acc
-from .algorithms import inclusive_scan, lower_bound, upper_bound
+from .algorithms import lower_bound, upper_bound
 from .atomic.atomic_fetch_op import (
     atomic_fetch_add, atomic_fetch_and, atomic_fetch_div,
     atomic_fetch_lshift, atomic_fetch_max, atomic_fetch_min,
