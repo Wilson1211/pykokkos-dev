@@ -8,9 +8,13 @@ def lower_bound(view: ViewType, size: int, value) -> int:
     Returns the index of the first element not less than (i.e. greater or equal to) value,
     similar to std::lower_bound or thrust::lower_bound.
     
-    :param view: the view to search (must be sorted)
+    Supported types: All orderable numeric types (int8, int16, int32, int64,
+    uint8, uint16, uint32, uint64, float, double). Complex types are not
+    supported as they cannot be ordered.
+    
+    :param view: the view to search (must be sorted in ascending order)
     :param size: the number of elements to search
-    :param value: the value to search for
+    :param value: the value to search for (must match view's element type)
     :returns: the index of the first element >= value
     """
     pass
@@ -65,9 +69,9 @@ def generate_lower_bound_binary_search(
     mid_calc = cppast.BinaryOperator(left_var, div_expr, cppast.BinaryOperatorKind.Add)
     mid_assign = cppast.AssignOperator([mid_var], mid_calc, cppast.BinaryOperatorKind.Assign)
     
-    # if (view[mid] < value)
+    # if (view(mid) < value)
     view_ref = view_expr if isinstance(view_expr, cppast.DeclRefExpr) else cppast.DeclRefExpr("view")
-    view_access = cppast.ArraySubscriptExpr(view_ref, [mid_var])
+    view_access = cppast.CallExpr(view_ref, [mid_var])
     if_cond = cppast.BinaryOperator(view_access, value_expr, cppast.BinaryOperatorKind.LT)
     
     # left = mid + 1;
