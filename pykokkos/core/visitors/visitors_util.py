@@ -19,7 +19,9 @@ allowed_types: Dict[str, str] = {
     "double": "double",
     "bool": "bool",
     "TeamMember": f"Kokkos::TeamPolicy<{Keywords.DefaultExecSpace.value}>::member_type",
-    "cpp_auto": "auto"
+    "cpp_auto": "auto",
+    "complex64": "Kokkos::complex<float>",
+    "complex128": "Kokkos::complex<double>"
 }
 
 # Maps from the DataType enum to cppast
@@ -86,6 +88,8 @@ math_functions: Set = {
     "cos",
     "cosh",
     "degrees",
+    "erf",
+    "erfc",
     "exp",
     "expm1",
     "fabs",
@@ -97,7 +101,8 @@ math_functions: Set = {
     "isfinite",
     "isinf",
     "isnan",
-    "isqrt",
+    "rsqrt",
+    "lgamma",
     "log",
     "log10",
     "log1p",
@@ -112,6 +117,7 @@ math_functions: Set = {
     "sqrt",
     "tan",
     "tanh",
+    "tgamma",
     "trunc",
     "nan",
 }
@@ -307,7 +313,8 @@ def parse_view_template_params(
 
         if parameter in ("int", "double", "float",
                             "int8_t", "int16_t", "int32_t", "int64_t",
-                            "uint8_t", "uint16_t", "uint32_t", "uint64_t"):
+                            "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+                            "Kokkos::complex<float>", "Kokkos::complex<double>"):
             datatype: str = parameter + "*" * rank
             params["dtype"] = datatype
 
