@@ -2,7 +2,7 @@ import pykokkos as pk
 
 
 @pk.workunit
-def init_data(i: int, view: pk.View1D[int]):
+def init_data(i, view):
     view[i] = i + 1
 
 
@@ -27,9 +27,9 @@ def team_lower_bound(team_member, view, result_view):
 
 
 # Test lower_bound with regular view
+# Find lower bound for value i in the first 10 elements
 @pk.workunit
 def lower_bound_view(i, view, result_view):
-    # Find lower bound for value i in the first 10 elements
     search_value: int = i
     bound_idx: int = pk.lower_bound(view, 10, search_value)
     result_view[i] = bound_idx
