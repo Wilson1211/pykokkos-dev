@@ -8,36 +8,27 @@ def init_data(i: int, view: pk.View1D[int]):
 
 # Test lower_bound with scratch memory
 @pk.workunit
-def team_lower_bound(team_member: pk.TeamMember, view: pk.View1D[int], result_view: pk.View1D[int]):
+def team_lower_bound(team_member, view, result_view):
     team_size: int = team_member.team_size()
     offset: int = team_member.league_rank() * team_size
     localIdx: int = team_member.team_rank()
     globalIdx: int = offset + localIdx
     team_rank: int = team_member.team_rank()
 
-    # Allocate scratch memory for sorted data
     scratch: pk.ScratchView1D[int] = pk.ScratchView1D(
         team_member.team_scratch(0), team_size
     )
 
-    # Copy data to scratch and make it sorted within the team
     scratch[team_rank] = view[globalIdx]
     team_member.team_barrier()
-
-    # Now use lower_bound to find position in scratch
-    # For example, find lower bound for the value at team_rank position
     search_value: int = team_rank * 2  # Search for a value
-    
-    # Find lower bound in scratch memory
     bound_idx: int = pk.lower_bound(scratch, team_size, search_value)
-    
-    # Store result
     result_view[globalIdx] = bound_idx
 
 
 # Test lower_bound with regular view
 @pk.workunit
-def lower_bound_view(i: int, view: pk.View1D[int], result_view: pk.View1D[int]):
+def lower_bound_view(i, view, result_view):
     # Find lower bound for value i in the first 10 elements
     search_value: int = i
     bound_idx: int = pk.lower_bound(view, 10, search_value)
@@ -51,7 +42,29 @@ def main():
 
     view: pk.View1D[int] = pk.View([N], int)
     result_view: pk.View1D[int] = pk.View([N], int)
-    
+
+    # Expected results
+    expected_scratch = pk.View([64], int)
+    expected_scratch_data = [
+        0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31,
+        32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29
+    ]
+    for i in range(64):
+        expected_scratch[i] = expected_scratch_data[i]
+
+    expected_view = pk.View([64], int)
+    expected_view_data = [
+        0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+        10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+        10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+        10, 10, 10, 10, 10, 10, 10, 10
+    ]
+    for i in range(64):
+        expected_view[i] = expected_view_data[i]
+
     p_init = pk.RangePolicy(pk.ExecutionSpace.OpenMP, 0, N)
     pk.parallel_for(p_init, init_data, view=view)
 
@@ -60,15 +73,24 @@ def main():
 
     # Test with TeamPolicy (scratch memory)
     team_policy = pk.TeamPolicy(pk.ExecutionSpace.OpenMP, num_teams, team_size)
-    
-    print("\nRunning lower_bound with scratch memory...")
+
     pk.parallel_for(team_policy, team_lower_bound, view=view, result_view=result_view)
     print(f"Result (scratch lower_bound): {result_view}")
 
+    # Assert scratch lower_bound results
+    for i in range(N):
+        assert (
+            result_view[i] == expected_scratch[i]
+        ), f"Mismatch at index {i}: got {result_view[i]}, expected {expected_scratch[i]}"
+
     # Test with RangePolicy (regular view)
-    print("\nRunning lower_bound with regular view...")
     pk.parallel_for(p_init, lower_bound_view, view=view, result_view=result_view)
     print(f"Result (view lower_bound): {result_view}")
+
+    for i in range(N):
+        assert (
+            result_view[i] == expected_view[i]
+        ), f"Mismatch at index {i}: got {result_view[i]}, expected {expected_view[i]}"
 
 
 if __name__ == "__main__":
