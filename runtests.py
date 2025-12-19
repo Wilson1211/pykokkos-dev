@@ -18,12 +18,6 @@ from tests import _logging_probe
 # pytest
 pytest_args = []
 
-# Ignore build directories to avoid collecting tests from dependencies
-pytest_args.extend([
-    "--ignore=base/_skbuild",
-    "--ignore=base/.eggs",
-])
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--specifictests', type=str)
 parser.add_argument('-d', '--durations', type=int)
@@ -31,10 +25,6 @@ args = parser.parse_args()
 
 if args.specifictests:
     pytest_args.append(args.specifictests)
-else:
-    # Default to tests/ directory if no specific test is provided
-    pytest_args.append("tests/")
-
 if args.durations:
     pytest_args.append(f"--durations={args.durations}")
 
