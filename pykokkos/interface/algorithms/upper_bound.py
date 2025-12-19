@@ -8,13 +8,9 @@ def upper_bound(view: ViewType, size: int, value) -> int:
     Returns the index of the first element greater than value,
     similar to std::upper_bound or thrust::upper_bound.
     
-    Supported types: All orderable numeric types (int8, int16, int32, int64,
-    uint8, uint16, uint32, uint64, float, double). Complex types are not
-    supported as they cannot be ordered.
-    
-    :param view: the view to search (must be sorted in ascending order)
+    :param view: the view to search (must be sorted)
     :param size: the number of elements to search
-    :param value: the value to search for (must match view's element type)
+    :param value: the value to search for
     :returns: the index of the first element greater than value
     """
     pass
