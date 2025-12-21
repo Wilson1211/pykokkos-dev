@@ -278,6 +278,13 @@ class View(ViewType):
 
         self._init_view(shape, dtype, space, layout, trait, array, cp_array)
 
+        try:
+            from pykokkos import _view_registry
+
+            _view_registry.add(self)
+        except (ImportError, AttributeError):
+            pass
+
     def resize(self, dimension: int, size: int) -> None:
         """
         Resizes a dimension of the view
