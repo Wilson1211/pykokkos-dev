@@ -14,15 +14,14 @@ if [ ! -f "${SECRETS_FILE}" ]; then
         cp "${SECRETS_TEMPLATE}" "${SECRETS_FILE}"
         echo ""
         echo "======================================"
-        echo "SETUP REQUIRED"
+        echo "CONFIGURATION (OPTIONAL)"
         echo "======================================"
         echo "A secrets.yaml file has been created from the template."
-        echo "Please edit it with your configuration:"
+        echo "You can edit it with your configuration or skip this step:"
         echo ""
         echo "  ${SECRETS_FILE}"
         echo ""
-        echo "Then run this script again."
-        echo "You can skip this step if you want to have default configuration."
+        echo "Run this script again to build the container."
         echo "======================================"
         exit 0
     else

@@ -23,7 +23,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 RUN --mount=type=secret,id=username \
     --mount=type=secret,id=password \
     --mount=type=secret,id=ssh_key \
-    if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
+    if [ -f /run/secrets/username ] && [ -s /run/secrets/username ] && [ -f /run/secrets/password ] && [ -s /run/secrets/password ]; then \
         export NAME=$(cat /run/secrets/username) && \
         export PASSWORD=$(cat /run/secrets/password) && \
         useradd -m -u 1000 -s /bin/bash ${NAME} && \
@@ -48,7 +48,7 @@ RUN export USERNAME=$(cat /tmp/username) && \
 # Conditionally add SSH public key if provided
 RUN --mount=type=secret,id=ssh_key \
     export USERNAME=$(cat /tmp/username) && \
-    if [ -f /run/secrets/ssh_key ] && [ "${USERNAME}" != "root" ]; then \
+    if [ -f /run/secrets/ssh_key ] && [ -s /run/secrets/ssh_key ] && [ "${USERNAME}" != "root" ]; then \
         export SSH_PUB_KEY=$(cat /run/secrets/ssh_key) && \
         mkdir -p /home/${USERNAME}/.ssh/ && \
         echo "${SSH_PUB_KEY}" >> /home/${USERNAME}/.ssh/authorized_keys && \
