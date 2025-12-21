@@ -1,7 +1,12 @@
 FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 
-ARG USERNAME
+# Optional ARG for username (only set if secret is provided)
+ARG USERNAME=""
 ENV username=${USERNAME}
+
+# Optional ARG for SSH port
+ARG PORT="2222"
+ENV SSH_PORT=${PORT}
 
 # Dependencies installation
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -10,71 +15,104 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     nano \
     git \
     openssh-server \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /var/run/sshd \
+    && ssh-keygen -A
 
-# Read secrets and create user with home directory
+# Create user using Docker secrets for sensitive data
 RUN --mount=type=secret,id=username \
     --mount=type=secret,id=password \
     --mount=type=secret,id=ssh_key \
-    export NAME=$(cat /run/secrets/username) && \
-    export PASSWORD=$(cat /run/secrets/password) && \
-    export SSH_PUB_KEY=$(cat /run/secrets/ssh_key) && \
-    useradd -m -u 1000 -s /bin/bash ${NAME} && \
-    echo "${NAME}:${PASSWORD}" | chpasswd && \
-    echo "root:${PASSWORD}" | chpasswd && \
-    usermod -aG sudo ${NAME} && \
-    chown -R ${NAME}:${NAME} /home/${NAME} && \
-    echo "${NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    echo "${NAME}" > /tmp/username
-
-# Configure SSH permissions for devcontainer
-RUN mkdir /var/run/sshd && \
-    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
-
-# Add SSH public key if provided
-RUN --mount=type=secret,id=ssh_key \
-    SSH_PUB_KEY=$(cat /run/secrets/ssh_key) && \
-    mkdir -p /home/${username}/.ssh/ && \
-    if [ -n "$SSH_PUB_KEY" ]; then \
-        echo "$SSH_PUB_KEY" >> /home/${username}/.ssh/authorized_keys; \
-    fi && \
-    chmod 700 /home/${username}/.ssh/ && \
-    chown -R ${username}:${username} /home/${username}/.ssh/ && \
-    if [ -f /home/${username}/.ssh/authorized_keys ]; then \
-        chmod 600 /home/${username}/.ssh/authorized_keys; \
+    if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
+        export NAME=$(cat /run/secrets/username) && \
+        export PASSWORD=$(cat /run/secrets/password) && \
+        useradd -m -u 1000 -s /bin/bash ${NAME} && \
+        echo "${NAME}:${PASSWORD}" | chpasswd && \
+        echo "root:${PASSWORD}" | chpasswd && \
+        usermod -aG sudo ${NAME} && \
+        chown -R ${NAME}:${NAME} /home/${NAME} && \
+        echo "${NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+        echo "${NAME}" > /tmp/username; \
+    else \
+        echo "root" > /tmp/username; \
     fi
 
-# Set up custom entrypoint
-WORKDIR /home/${username}/
+# Configure SSH permissions for devcontainer (only if custom user was created)
+RUN export USERNAME=$(cat /tmp/username) && \
+    if [ "${USERNAME}" != "root" ]; then \
+        mkdir -p /var/run/sshd && \
+        sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config && \
+        sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config; \
+    fi
+
+# Conditionally add SSH public key if provided
+RUN --mount=type=secret,id=ssh_key \
+    export USERNAME=$(cat /tmp/username) && \
+    if [ -f /run/secrets/ssh_key ] && [ "${USERNAME}" != "root" ]; then \
+        export SSH_PUB_KEY=$(cat /run/secrets/ssh_key) && \
+        mkdir -p /home/${USERNAME}/.ssh/ && \
+        echo "${SSH_PUB_KEY}" >> /home/${USERNAME}/.ssh/authorized_keys && \
+        chmod 700 /home/${USERNAME}/.ssh/ && \
+        chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.ssh/ && \
+        chmod 600 /home/${USERNAME}/.ssh/authorized_keys; \
+    fi
+
+# Set up custom entrypoint and init scripts
 COPY dev-container/scripts/custom-entrypoint.sh /opt/custom-entrypoint.sh
-RUN chmod +x /opt/custom-entrypoint.sh
+COPY dev-container/scripts/init-pykokkos.sh /opt/init-pykokkos.sh
+RUN chmod +x /opt/custom-entrypoint.sh /opt/init-pykokkos.sh
+
+# Set working directory based on USERNAME ARG
+# WORKDIR_PATH will be passed as build arg from build script
+ARG WORKDIR_PATH="/root"
+
+# Set WORKDIR - use WORKDIR_PATH from build arg
+WORKDIR ${WORKDIR_PATH}
+
+# Temporarily switch to user for conda and git operations
+USER ${USERNAME:-root}
 
 # Set up and initialize conda environment
-RUN echo "export condaPath=/home/${username}/miniconda3/bin/" >> /tmp/conda_env
-ENV condaPath="/home/${username}/miniconda3/bin"
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && \
-    bash miniconda.sh -b -p /home/${username}/miniconda3 && \
-    rm -f miniconda.sh && \
-    chown -R ${username}:${username} /home/${username}/miniconda3/
+# Install conda in the user's home directory
+RUN export USERNAME=$(cat /tmp/username) && \
+    if [ "${USERNAME}" != "root" ]; then \
+        export HOME_DIR="/home/${USERNAME}" && \
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && \
+        bash miniconda.sh -b -p ${HOME_DIR}/miniconda3 && \
+        rm -f miniconda.sh && \
+        echo "${HOME_DIR}/miniconda3/bin" > /tmp/conda_path; \
+    else \
+        export HOME_DIR="/root" && \
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && \
+        bash miniconda.sh -b -p ${HOME_DIR}/miniconda3 && \
+        rm -f miniconda.sh && \
+        echo "${HOME_DIR}/miniconda3/bin" > /tmp/conda_path; \
+    fi
 
-# Initialize user's conda environment, TOS agreements
-USER ${username}
-WORKDIR /home/${username}/
-# Initialize conda in bash and ensure it's loaded in every shell
-RUN ${condaPath}/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
-    ${condaPath}/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r && \
-    ${condaPath}/conda init
+# Initialize user's conda environment, TOS agreements and ensure it's loaded in every shell
+RUN export CONDA_PATH=$(cat /tmp/conda_path) && \
+    ${CONDA_PATH}/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    ${CONDA_PATH}/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r && \
+    ${CONDA_PATH}/conda init
 
-# Clone myself to this container
+# Clone pykokkos repository (installation will happen at runtime)
 RUN git clone https://github.com/kokkos/pykokkos.git
-RUN git clone https://github.com/kokkos/pykokkos-base.git
+
+# Add conda to PATH in .bashrc
+RUN export CONDA_PATH=$(cat /tmp/conda_path) && \
+    export HOME_DIR=$(dirname $(dirname ${CONDA_PATH})) && \
+    if [ "${HOME_DIR}" != "/root" ]; then \
+        echo "export PATH=\"${CONDA_PATH}:${HOME_DIR}/miniconda3/condabin:${HOME_DIR}/.local/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"" >> ${HOME_DIR}/.bashrc && \
+        echo "export condaPath=${CONDA_PATH}" >> ${HOME_DIR}/.bashrc; \
+    else \
+        echo "export PATH=\"${CONDA_PATH}:${HOME_DIR}/miniconda3/condabin:${HOME_DIR}/.local/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"" >> ${HOME_DIR}/.bashrc && \
+        echo "export condaPath=${CONDA_PATH}" >> ${HOME_DIR}/.bashrc; \
+    fi
+
+# Switch back to root for entrypoint execution
+USER root
 
 # Expose port in order to be able to connect from IDEs
-USER root
-EXPOSE 2222
-
-# Add ~/.local/bin to PATH (for pip installs etc.)
-RUN echo "export PATH=\"/home/${username}/miniconda3/bin:/home/${username}/miniconda3/condabin:/home/${username}/.local/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"" >> /home/${username}/.bashrc
+EXPOSE ${SSH_PORT}
 
 ENTRYPOINT ["/opt/custom-entrypoint.sh"]
