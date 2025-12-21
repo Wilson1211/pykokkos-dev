@@ -5,6 +5,31 @@ SCRIPT_PATH=$(readlink -f "${BASH_SOURCE[0]}")
 CONTAINER_DIR=$(dirname "$SCRIPT_PATH")
 PROJECT_ROOT=$(dirname "$CONTAINER_DIR")
 SECRETS_FILE="${CONTAINER_DIR}/secrets.yaml"
+SECRETS_TEMPLATE="${CONTAINER_DIR}/secrets-template.yaml"
+
+# Check if secrets.yaml exists, if not copy from template
+if [ ! -f "${SECRETS_FILE}" ]; then
+    if [ -f "${SECRETS_TEMPLATE}" ]; then
+        echo "secrets.yaml not found. Creating from template..."
+        cp "${SECRETS_TEMPLATE}" "${SECRETS_FILE}"
+        echo ""
+        echo "======================================"
+        echo "SETUP REQUIRED"
+        echo "======================================"
+        echo "A secrets.yaml file has been created from the template."
+        echo "Please edit it with your configuration:"
+        echo ""
+        echo "  ${SECRETS_FILE}"
+        echo ""
+        echo "Then run this script again."
+        echo "You can skip this step if you want to have default configuration."
+        echo "======================================"
+        exit 0
+    else
+        echo "Error: Neither secrets.yaml nor secrets-template.yaml found!"
+        exit 1
+    fi
+fi
 
 # Template values
 TEMPLATE_USERNAME="root"

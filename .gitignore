@@ -47,7 +47,8 @@ tags
 [._]*.un~
 
 # Docker files and secrets
-dev-container/secrets/
+dev-container/secrets.yaml
 
 # Output files and directories
 build/
+dev-container/secrets.yaml
