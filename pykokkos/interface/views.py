@@ -1,5 +1,6 @@
 from __future__ import annotations
 import ctypes
+import importlib
 import math
 from enum import Enum
 import os
@@ -240,7 +241,11 @@ class ViewType:
         # numpy/lib/user_array.py for
         # handling scalar conversions
         if self.ndim == 0 or (self.ndim == 1 and self.size == 1):
-            return func(self[0])
+            val = self[0]
+            # Handle case where val might be a numpy/cupy array (0-D array)
+            if hasattr(val, 'item'):
+                return func(val.item())
+            return func(val)
         else:
             raise TypeError("only single element arrays can be converted to Python scalars.")
 
@@ -384,8 +389,13 @@ class View(ViewType):
         if trait is trait.Unmanaged:
             if array is not None and array.ndim == 0:
                 # TODO: we don't really support 0-D under the hood--use
-                # NumPy for now...
+                # NumPy/CuPy for now...
                 self.array = array
+                # For cupy arrays, store reference to xp_array
+                if cp_array is not None:
+                    self.xp_array = cp_array
+                else:
+                    self.xp_array = array
             else:
                 if array.dtype == np.bool_:
                     array = array.astype(np.uint8)
@@ -405,7 +415,13 @@ class View(ViewType):
             if len(self.shape) == 0:
                 shape = [1]
             self.array = kokkos_lib.array("", shape, None, None, self.dtype.value, space.value, layout.value, trait.value)
-        self.data = np.array(self.array, copy=False)
+        
+        # For 0-D cupy arrays stored in self.array, get numpy version for self.data
+        if hasattr(self, 'array') and hasattr(self.array, 'get'):
+            # It's a cupy array, convert to numpy for self.data
+            self.data = self.array.get()
+        else:
+            self.data = np.array(self.array, copy=False)
 
     def _get_type(self, dtype: Union[DataType, type]) -> Optional[DataType]:
         """
@@ -727,12 +743,24 @@ def from_numpy(array: np.ndarray, space: Optional[MemorySpace] = None, layout: O
     if array.ndim == 0:
         ret_list = ()
         if np_dtype == np.bool_:
-            if array == 1:
-                array = np.array(1, dtype=np.uint8)
+            # For bool, convert to uint8
+            if cp_array is not None:
+                # Get the array module from cp_array's type
+                array_module = importlib.import_module(type(cp_array).__module__.split('.')[0])
+                scalar_val = 1 if array == 1 else 0
+                array = array_module.array(scalar_val, dtype=np.uint8)
             else:
-                array = np.array(0, dtype=np.uint8)
+                scalar_val = 1 if array == 1 else 0
+                array = np.array(scalar_val, dtype=np.uint8)
         else:
-            array = np.array(array, dtype=np_dtype)
+            # For other dtypes, recreate the array with proper dtype
+            if cp_array is not None:
+                # Get the array module from cp_array's type
+                array_module = importlib.import_module(type(cp_array).__module__.split('.')[0])
+                scalar_val = array.item()
+                array = array_module.array(scalar_val, dtype=np_dtype)
+            else:
+                array = np.array(array, dtype=np_dtype)
     else:
         ret_list = list((array.shape))
 
@@ -750,6 +778,22 @@ def from_array(array) -> ViewType:
 
     :param array: the numpy-like array
     """
+
+    # Handle 0-D arrays separately to avoid ctypes issues
+    if array.ndim == 0:
+        # For 0-D arrays, use the scalar value directly
+        scalar_val = array.item()
+        np_array = np.array(scalar_val, dtype=array.dtype.type)
+        
+        memory_space: MemorySpace
+        if km.get_gpu_framework() is pk.Cuda:
+            memory_space = MemorySpace.CudaSpace
+        elif km.get_gpu_framework() is pk.HIP:
+            memory_space = MemorySpace.HIPSpace
+        else:
+            memory_space = MemorySpace.HostSpace
+        
+        return from_numpy(np_array, memory_space, Layout.LayoutDefault, array)
 
     np_dtype = array.dtype.type
 
