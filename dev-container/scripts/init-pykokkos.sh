@@ -30,6 +30,8 @@ if [ -f /tmp/conda_path ]; then
             conda activate pyk
             echo "[PyKokkos Init] PYK env activated..." > /tmp/pyk-install.log
             python install_base.py install -- -DENABLE_LAYOUTS=ON -DENABLE_MEMORY_TRAITS=OFF -DENABLE_VIEW_RANKS=3 -DENABLE_CUDA=ON -DENABLE_THREADS=OFF -DENABLE_OPENMP=ON >> /tmp/pyk-install.log 2>&1
+            conda install -c conda-forge pybind11 cupy patchelf -y
+            pip install -e ./
 
             if [ $? -eq 0 ]; then
                 echo "[PyKokkos Init] Installation complete! Log: /tmp/pyk-install.log"
