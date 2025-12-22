@@ -240,7 +240,11 @@ class ViewType:
         # numpy/lib/user_array.py for
         # handling scalar conversions
         if self.ndim == 0 or (self.ndim == 1 and self.size == 1):
-            return func(self[0])
+            val = self[0]
+            # Handle case where val might be a numpy array (0-D array)
+            if hasattr(val, 'item'):
+                return func(val.item())
+            return func(val)
         else:
             raise TypeError("only single element arrays can be converted to Python scalars.")
 
