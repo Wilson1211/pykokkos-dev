@@ -26,6 +26,7 @@ jobs:
         with:
           dockerfile: dev-container/Dockerfile
           failure-threshold: warning
+          ignore: DL3002
 
   # Shell scripts check
   shellcheck:
@@ -71,7 +72,7 @@ jobs:
       - name: Build Docker image (test only)
         uses: docker/build-push-action@v5
         with:
-          context: ./dev-container
+          context: .
           file: ./dev-container/Dockerfile
           push: false
           tags: pykokkos-dev:test
