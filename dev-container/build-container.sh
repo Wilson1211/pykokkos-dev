@@ -188,7 +188,7 @@ farewell() {
 }
 
 # Main script execution flow
-pushd "$CONTAINER_DIR" &> /dev/null
+pushd "$CONTAINER_DIR" &> /dev/null || exit
 
 load_secrets
 check_templates
@@ -198,4 +198,4 @@ stop_and_remove_container
 run_container
 farewell
 
-popd
+popd || exit
