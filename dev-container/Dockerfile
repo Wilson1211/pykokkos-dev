@@ -15,6 +15,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-instal
     nano=6.2-1ubuntu0.1 \
     git=1:2.34.1-1ubuntu1.15 \
     openssh-server=1:8.9p1-3ubuntu0.13 \
+    wget=1.21.2-2ubuntu1.1 \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /var/run/sshd \
     && ssh-keygen -A
