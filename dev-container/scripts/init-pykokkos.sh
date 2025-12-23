@@ -5,17 +5,19 @@ sleep 2
 
 # Initialize conda and create PyKokkos environment if it doesn't exist
 if [ -f /tmp/conda_path ]; then
-    export CONDA_PATH=$(cat /tmp/conda_path)
+    export CONDA_PATH
+    CONDA_PATH=$(cat /tmp/conda_path)
     source ${CONDA_PATH}/../etc/profile.d/conda.sh
 
-    export USERNAME=$(cat /tmp/username 2>/dev/null || echo "root")
+    export USERNAME
+    USERNAME=$(cat /tmp/username 2>/dev/null || echo "root")
     if [ "${USERNAME}" != "root" ]; then
         export HOME_DIR="/home/${USERNAME}"
     else
         export HOME_DIR="/root"
     fi
 
-    cd ${HOME_DIR}
+    cd ${HOME_DIR} || exit
 
     # Accept conda TOS for this user
     conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main 2>/dev/null || true
@@ -24,7 +26,7 @@ if [ -f /tmp/conda_path ]; then
     # Check if pyk environment exists
     if ! conda env list | grep -q "^pyk "; then
         echo "[PyKokkos Init] Creating conda environment..."
-        cd pykokkos
+        cd pykokkos || exit
         if conda create --name pyk --file base/requirements.txt python=3.11 -y > /tmp/pyk-install.log 2>&1; then
             echo "[PyKokkos Init] Installing PyKokkos with CUDA support..." > /tmp/pyk-install.log
             conda activate pyk

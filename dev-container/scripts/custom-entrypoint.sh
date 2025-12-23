@@ -6,9 +6,9 @@ print_banner_text() {
     local text="$2"
     local pad="${banner_char}${banner_char}"
     local repeats=$((${#text} + 6))
-    printf '%*s\n' "$repeats" | tr ' ' "$banner_char"
+    printf '%*s\n' "$repeats" '' | tr ' ' "$banner_char"
     echo "${pad} ${text} ${pad}"
-    printf '%*s\n' "$repeats" | tr ' ' "$banner_char"
+    printf '%*s\n' "$repeats" '' | tr ' ' "$banner_char"
 }
 
 SSH_PORT=${SSH_PORT:-2222}
