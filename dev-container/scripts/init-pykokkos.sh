@@ -7,7 +7,7 @@ sleep 2
 if [ -f /tmp/conda_path ]; then
     export CONDA_PATH
     CONDA_PATH=$(cat /tmp/conda_path)
-    source ${CONDA_PATH}/../etc/profile.d/conda.sh
+    source "${CONDA_PATH}/../etc/profile.d/conda.sh"
 
     export USERNAME
     USERNAME=$(cat /tmp/username 2>/dev/null || echo "root")

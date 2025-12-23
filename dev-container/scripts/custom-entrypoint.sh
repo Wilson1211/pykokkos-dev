@@ -12,7 +12,7 @@ print_banner_text() {
 }
 
 SSH_PORT=${SSH_PORT:-2222}
-/usr/sbin/sshd -D -p ${SSH_PORT} &
+/usr/sbin/sshd -D -p" ${SSH_PORT}" &
 
 # Source nvidia environment parts (without the exec at the end)
 if [ -d /opt/nvidia/entrypoint.d ]; then
@@ -23,6 +23,7 @@ if [ -d /opt/nvidia/entrypoint.d ]; then
 
     # Process .sh files (source environment setup)
     for _file in /opt/nvidia/entrypoint.d/*.sh; do
+        # shellcheck source=/dev/null
         [ -f "$_file" ] && source "$_file"
     done
     echo
