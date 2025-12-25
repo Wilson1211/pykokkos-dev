@@ -45,20 +45,19 @@ def atomic_fetch_max(
         view: View,
         indices: List[int],
         value: Union[int, float]) -> Union[int, float]:
-    oldResult: int = view[indices[-1]]
+    old_result: int = view[indices[-1]]
     inner = reduce(operator.getitem, indices[:-1], view)
     inner[indices[-1]] = max(inner[indices[-1]], value)
-    return oldResult 
+    return old_result 
 
 def atomic_fetch_min(
         view: View,
         indices: List[int],
         value: Union[int, float]) -> Union[int, float]:
-    oldResult: int = view[indices[-1]]
+    old_result: int = view[indices[-1]]
     inner = reduce(operator.getitem, indices[:-1], view)
     inner[indices[-1]] = min(inner[indices[-1]], value)
-    return oldResult
-    # return inner[indices[-1]] 
+    return old_result
 
 def atomic_fetch_mod(
         view: View,
@@ -114,7 +113,7 @@ def atomic_compare_exchange(
         comparison_value: int,
         new_value: int) -> int:
     inner = reduce(operator.getitem, indices[:-1], view)
-    oldResult = inner[indices[-1]]
-    if oldResult == comparison_value:
+    old_result = inner[indices[-1]]
+    if old_result == comparison_value:
         inner[indices[-1]] = new_value
-    return oldResult
+    return old_result
