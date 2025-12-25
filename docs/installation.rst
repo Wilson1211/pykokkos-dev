@@ -14,29 +14,26 @@ operating systems and executions spaces
 Using Docker
 ------------
 
-Currently deprecated. Work in progress.
-.. You can use the PyKokkos Docker image to develop PyKokkos itself, as
-.. well as develop and run applications.  We recommend using the ``pk``
-.. script for interacting with the image and containers.
+You can use the PyKokkos Docker image to develop PyKokkos itself, as well as
+develop and run applications. We recommend to use
+``dev-container/build-container.sh`` script in order to build and use Docker
+container only for personal usage on **Nvidia GPUs**.
 
 .. To run an application in a container, you can execute the following
 .. command:
 
 .. .. code-block:: bash
 
-..    ./pk pk_example examples/kokkos-tutorials/workload/01.py
+   bash ./dev-container/build-container.sh
 
-.. The command above will pull the image from the Docker Hub, run a
-.. container, include this repository as a volume, and run the example
-.. application from the given path.
+The command will build developer container in wizard format, which means you
+need to answer or skip some question regarding container name, opened ports, ssh
+keys and so on. You can skip all of the questions with ``Enter`` and script will
+use default values. After container is build, you can enter container, using
+entered/default values.
 
-.. If you would like to run another example application, you can simply
-.. change the path (the last argument in the command above).
-
-.. Note that code you are running should be in the PyKokkos repository.
-.. If you would like to run from another directory you will need to
-.. include the directory as a volume; take a look at the ``pk`` script in
-.. that case.
+In container, enter ``pykokkos`` directory and build pykokkos as it described in
+:ref:`Native Installation<native_installation>`.
 
 Design Decision
 ^^^^^^^^^^^^^^^
